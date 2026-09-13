@@ -1,6 +1,6 @@
 # Build PsiphonTunnel.xcframework from this fork only.
-# Repo layout: this file lives at .github/workflows/psiphon-apple.yml
-# when `psiphon-ios/` is the GitHub repo root (do not upload persianray-ios).
+# GitHub repo for this Action: upload psiphon-ios/ as the repo root
+# (copy from psiphon-ios/.github/workflows/psiphon-apple.yml).
 name: psiphon-apple
 
 on:
@@ -32,7 +32,7 @@ jobs:
           elif [ -d psiphon-ios/MobileLibrary/iOS ]; then
             echo "SRC=$PWD/psiphon-ios" >> "$GITHUB_ENV"
           else
-            echo "Expected MobileLibrary/iOS at repo root (upload the psiphon-ios directory as the repo)."
+            echo "Expected MobileLibrary/iOS at repo root, or psiphon-ios/MobileLibrary/iOS."
             ls -la
             exit 1
           fi
@@ -56,7 +56,7 @@ jobs:
           cd "$SRC/MobileLibrary/iOS"
           perl -pi -e 's/\r$//' build-psiphon-framework.sh
           chmod +x build-psiphon-framework.sh
-          bash ./build-psiphon-framework.sh
+          bash ./build-psiphon-framework.sh PSIPHON_DISABLE_INPROXY
 
       - name: Upload PsiphonTunnel.xcframework
         uses: actions/upload-artifact@v4
