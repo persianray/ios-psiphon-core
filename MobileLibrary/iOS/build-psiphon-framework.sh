@@ -21,6 +21,13 @@ GO_VERSION_REQUIRED="1.26.3"
 # At this time, psiphon-tunnel-core doesn't support modules
 export GO111MODULE=off
 
+# Capture Go from the caller (GitHub Actions setup-go) before PATH is reset.
+# setup-go puts `go` on PATH but does not always export GOROOT; set -u needs it.
+if [ -z "${GOROOT:-}" ]; then
+  GOROOT="$(go env GOROOT)"
+fi
+export GOROOT
+
 # Reset the PATH to macOS default. This is mainly so we don't execute the wrong
 # gomobile executable.
 PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin
