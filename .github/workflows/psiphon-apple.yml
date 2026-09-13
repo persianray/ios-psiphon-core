@@ -51,8 +51,9 @@ jobs:
         run: |
           set -euo pipefail
           cd "$SRC/MobileLibrary/iOS"
+          perl -pi -e 's/\r$//' build-psiphon-framework.sh
           chmod +x build-psiphon-framework.sh
-          ./build-psiphon-framework.sh
+          bash ./build-psiphon-framework.sh
 
       - name: Upload PsiphonTunnel.xcframework
         uses: actions/upload-artifact@v4
