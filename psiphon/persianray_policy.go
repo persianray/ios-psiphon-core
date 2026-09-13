@@ -4,6 +4,9 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/Psiphon-Labs/psiphon-tunnel-core/psiphon/common/errors"
 )
@@ -15,9 +18,33 @@ type persianRayAction int
 const (
 	prTunnel persianRayAction = iota
 	prDirect
+	prBlockAds
 	prBlock
 	prSafeSearch
 )
+
+// Matches Android AdBlockStats.add: lock-free increment on the dial path.
+// A 1s ticker emits one notice with the batch so the UI is not on the hot path.
+var (
+	persianRayAdBlockPending atomic.Int64
+	persianRayAdBlockTick    sync.Once
+)
+
+func notePersianRayAdBlock() {
+	persianRayAdBlockTick.Do(func() {
+		go func() {
+			t := time.NewTicker(time.Second)
+			defer t.Stop()
+			for range t.C {
+				n := persianRayAdBlockPending.Swap(0)
+				if n > 0 {
+					NoticeInfo("persianray-block-ads %d", n)
+				}
+			}
+		}()
+	})
+	persianRayAdBlockPending.Add(1)
+}
 
 func (config *Config) policyEnabled() bool {
 	if config == nil {
@@ -39,7 +66,7 @@ func (config *Config) persianRayAction(target string) persianRayAction {
 	}
 	h := strings.ToLower(strings.TrimSuffix(host, "."))
 	if config.PersianRayBlockAds && matchHost(h, config.adExact(), config.adSuffix()) {
-		return prBlock
+		return prBlockAds
 	}
 	if config.PersianRayBlockAdult && matchHost(h, config.adultExact(), config.adultSuffix()) {
 		return prBlock
@@ -68,6 +95,9 @@ func DialPersianRay(
 	downstream net.Conn,
 ) (net.Conn, error) {
 	switch config.persianRayAction(target) {
+	case prBlockAds:
+		notePersianRayAdBlock()
+		return nil, errors.TraceNew("persianray: blocked")
 	case prBlock:
 		return nil, errors.TraceNew("persianray: blocked")
 	case prDirect:
